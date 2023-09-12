@@ -2,7 +2,7 @@
 
 from colorama import init, Fore, Back, Style
 
-import ev3dev2.motor as motor
+# import ev3dev2.motor as motor
 import math
 import heapq
 
@@ -175,23 +175,16 @@ def get_neighbors(node):
     return [(x, y) for x, y in neighbors if is_valid_move(x, y)]
 
 
-def weighted_sum(current_node, target, desired_length, visited_gates):
+def weighted_sum(path, target, desired_length):
     gate_weight = 15  # Adjust this weight as needed
     gate_reward = 0
 
-    if current_node in GATES and current_node not in visited_gates:
-        visited_gates.add(current_node)  # Mark the gate as visited
-        gate_reward = gate_weight
+    for node in path:
+        if node in gates:
+            gate_reward += gate_weight
 
-    deviation_x = current_node[0] - target[0]
-    deviation_y = current_node[1] - target[1]
-
-    # Penalize going under by N (twice as bad)
-    deviation_penalty = abs(deviation_x) + abs(deviation_y)
-    if deviation_x < 0:
-        deviation_penalty *= 2
-
-    length_penalty = abs(desired_length - deviation_penalty)
+    length_penalty = len(path) - desired_length
+    length_penalty *= 1 if length_penalty >=0 else 2
 
     combined_cost = -gate_reward + length_penalty
 
@@ -210,7 +203,7 @@ def backtrack_search(current_node, path, desired_length, visited_gates):
 
     # Sort neighbors based on weighted sum
     valid_neighbors.sort(key=lambda neighbor: weighted_sum(
-        neighbor, TARGET_POINT, desired_length, visited_gates))
+        path, TARGET_POINT, desired_length))
 
     for neighbor in valid_neighbors:
         if neighbor not in path:
@@ -250,7 +243,7 @@ if __name__ == "__main__":
     create_wall((0, 6), "down")
     create_wall((4, 4), "down")
 
-    TARGET_TIME = 25
+    TARGET_TIME = 20
     # END INITIALIZATION
 
     path = find_best_path(TARGET_TIME)
