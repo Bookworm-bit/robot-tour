@@ -2,7 +2,7 @@
 
 from colorama import init, Fore, Back, Style
 
-# import ev3dev2.motor as motor
+import ev3dev2.motor as motor
 import math
 import heapq
 
@@ -175,53 +175,71 @@ def get_neighbors(node):
     return [(x, y) for x, y in neighbors if is_valid_move(x, y)]
 
 
-def weighted_sum(path, target, desired_length):
-    gate_weight = 15  # Adjust this weight as needed
+def manhattan_distance(point1, point2):
+    return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
+
+
+def weighted_sum(path):
+    gate_proximity = 0
     gate_reward = 0
+    desired_length = TARGET_TIME
 
-    for node in path:
-        if node in gates:
-            gate_reward += gate_weight
+    last_node = path[-1]
+    visited_gates = [gate for gate in GATES if gate in path]
+    unvisited_gates = [gate for gate in GATES if gate not in visited_gates]
+    if unvisited_gates:
+        nearest_gate = min(
+            unvisited_gates, key=lambda gate: manhattan_distance(last_node, gate)
+        )
+        gate_proximity -= 4 * (manhattan_distance(last_node, nearest_gate) - manhattan_distance(path[-2], nearest_gate))
 
-    length_penalty = len(path) - desired_length
-    length_penalty *= 1 if length_penalty >=0 else 2
+        if manhattan_distance(path[-2], nearest_gate) == 1 and last_node != nearest_gate:
+            gate_proximity += 30
+    
+    if last_node in GATES:
+        gate_reward -= 15
 
-    combined_cost = -gate_reward + length_penalty
+    length_penalty = desired_length - len(path) - manhattan_distance(path[-1], TARGET_POINT)
+    length_penalty *= 3 if length_penalty >=0 else -6
+    length_penalty //= 2
 
+    revisit_penalty = (len(path) - len(set(path))) * 3
+
+    if revisit_penalty == 0:
+        revisit_penalty = -4
+
+    combined_cost = -gate_proximity - gate_reward + length_penalty + revisit_penalty + len(path)
     return combined_cost
 
-def backtrack_search(current_node, path, desired_length, visited_gates):
-    if len(path) > desired_length:
-        return None
 
-    if current_node == TARGET_POINT:
-        return path
+def search(start, target, max_steps):
+    open_list = []
+    heapq.heappush(open_list, (0, start, [start]))
+    visited = set()  # Track visited nodes
 
-    path.append(current_node)
+    while open_list:
+        _, current, path = heapq.heappop(open_list)
 
-    valid_neighbors = get_neighbors(current_node)
+        if current == target:
+            return path
 
-    # Sort neighbors based on weighted sum
-    valid_neighbors.sort(key=lambda neighbor: weighted_sum(
-        path, TARGET_POINT, desired_length))
+        if len(path) >= max_steps * 2:
+            continue
 
-    for neighbor in valid_neighbors:
-        if neighbor not in path:
-            result = backtrack_search(
-                neighbor, path.copy(), desired_length, visited_gates)
-            if result:
-                return result
+        for neighbor in get_neighbors(current):
+            if neighbor not in path or (path and neighbor == path[-2]):  # Check if path is not empty
+                new_path = path + [neighbor]
+                priority = weighted_sum(new_path)
+
+                heapq.heappush(open_list, (priority, neighbor, new_path))
+                visited.add(neighbor)  # Mark neighbor as visited
+
+        # Remove visited nodes from the set when backtracking
+        while path and path[-1] in visited:  # Check if path is not empty
+            visited.remove(path.pop())
 
     return None
 
-
-def find_best_path(target_time):
-    visited_gates = set()
-    visited_gates.add(START_POINT)  # Start from the START_POINT
-    return backtrack_search(START_POINT, [], target_time, visited_gates)
-
-
-gates = [(5, 1), (1, 5), (5, 7)]
 
 if __name__ == "__main__":
     init(autoreset=True)
@@ -243,10 +261,11 @@ if __name__ == "__main__":
     create_wall((0, 6), "down")
     create_wall((4, 4), "down")
 
-    TARGET_TIME = 20
-    # END INITIALIZATION
+    TARGET_TIME = int(input("Enter target length: "))
+    if input("Print empty graph? (y/n): ") == "y":
+        print_colored_grid(graph)
 
-    path = find_best_path(TARGET_TIME)
+    path = search(START_POINT, TARGET_POINT, TARGET_TIME)
 
     if path:
         print("Found path:")
