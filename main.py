@@ -1,24 +1,16 @@
 #!/usr/bin/env python3
 
-from colorama import init, Fore, Back, Style
-
 import ev3dev2.motor as motor
 import math
 import heapq
 
-
 class Robot:
-    def __init__(self, left_motor_port, right_motor_port, wheel_diameter, wheel_distance, bot_length, bot_width, target_time):
-        self.left_motor = motor.LargeMotor(left_motor_port)
-        self.right_motor = motor.LargeMotor(right_motor_port)
+    def __init__(self, left_motor_port, right_motor_port, wheel_diameter, target_time):
+        self.tank_drive = motor.MoveTank(left_motor_port, right_motor_port)
         self.wheel_diameter = wheel_diameter
-        self.wheel_distance = wheel_distance
-        self.bot_length = bot_length
-        self.bot_width = bot_width
         self.direction = "up"
-        self.rotations = 0
-        self.drive_movements = 0
-        self.target_time = target_time
+        self.target_time = int(target_time / (250 / (math.pi * wheel_diameter * (8 / 3))))
+        self.path = None
 
     def distance_to_rotations(self, distance):
         return distance / (math.pi * self.wheel_diameter)
@@ -26,86 +18,70 @@ class Robot:
     def rotate(self, direction):
         turn = 1 if direction == "right" else -1
 
-        self.left_motor.on_for_degrees(
-            self.distance_to_rotations(self.bot_width / 2) * 360 * turn, 50)
-        self.right_motor.on_for_degrees(
-            self.distance_to_rotations(self.bot_width / 2) * 360 * turn, 50)
+        self.direction = 
+        self.tank_drive.reset()
+        self.tank_drive.on_for_rotations(100 * turn, 0, 1.5, brake=True, block=True)
+        self.tank_drive.reset()
+        self.tank_drive.on_for_rotations(0, -100 * turn, 1.5, brake=True, block=True)
 
-        self.rotations += 1
+    def move(self):
+        square = self.distance_to_rotations(250)
+        self.tank_drive.on_for_rotations(100, 100, square, brake=True, block=True)
 
-    def move(self, direction):
-        direction = 1 if direction == "forward" else -1
+    def follow_path(self):
+        move = self.distance_to_rotations(125)
+        self.tank_drive.on_for_rotations(100, 100, move, brake=True, block=True)
 
-        self.left_motor.on_for_degrees(
-            self.distance_to_rotations(250) * 360 * direction, 50)
-        self.right_motor.on_for_degrees(
-            self.distance_to_rotations(250) * 360 * direction, 50)
+        for i in range(len(self.path) - 1):
+            current_node = self.path[i]
+            next_node = self.path[i + 1]
 
-        self.drive_movements += 1
+            absolute_direction_to_turn = None
+            for side in DIRECTIONS.keys():
+                if current_node[0] + DIRECTIONS[side][0] == next_node[0] and current_node[1] + DIRECTIONS[side][1] == next_node[1]:
+                    absolute_direction_to_turn = side
+            
+            directions = ["up", "right", "down", "left"]
+            if self.direction == absolute_direction_to_turn:
+                self.move()
+            else:
+                if abs(self.d)
 
-    def follow_path(self, graph):
-        path = None
-        self.drive_movements += len(path)
 
-        for i in range(len(path) - 1):
-            current_node = path[i]
-            next_node = path[i + 1]
+    def weighted_sum(self, path):
+        desired_length = self.target_time
 
-            y_diff = next_node[0] - current_node[0]
-            x_diff = next_node[1] - current_node[1]
+        visited_gates = [gate for gate in GATES if gate in path]
 
-            if x_diff == 1:
-                if self.direction == "left":
-                    self.move("backward")
-                elif self.direction == "right":
-                    self.move("forward")
-                elif self.direction == "up":
-                    self.rotate("right")
-                    self.move("forward")
-                    self.direction = "right"
-                elif self.direction == "down":
-                    self.rotate("left")
-                    self.move("forward")
-                    self.direction = "right"
-            elif x_diff == -1:
-                if self.direction == "left":
-                    self.move("forward")
-                elif self.direction == "right":
-                    self.move("backward")
-                elif self.direction == "up":
-                    self.rotate("left")
-                    self.move("forward")
-                    self.direction = "left"
-                elif self.direction == "down":
-                    self.rotate("right")
-                    self.move("forward")
-                    self.direction = "left"
-            elif y_diff == 1:
-                if self.direction == "left":
-                    self.rotate("right")
-                    self.move("forward")
-                    self.direction = "up"
-                elif self.direction == "right":
-                    self.rotate("left")
-                    self.move("forward")
-                    self.direction = "up"
-                elif self.direction == "up":
-                    self.move("forward")
-                elif self.direction == "down":
-                    self.move("backward")
-            elif y_diff == -1:
-                if self.direction == "left":
-                    self.rotate("left")
-                    self.move("forward")
-                    self.direction = "down"
-                elif self.direction == "right":
-                    self.rotate("right")
-                    self.move("forward")
-                    self.direction = "down"
-                elif self.direction == "up":
-                    self.move("backward")
-                elif self.direction == "down":
-                    self.move("forward")
+        gate_reward = 1.5 * len(visited_gates)
+
+        length_penalty = max(2 * (desired_length - len(path)), 0)
+
+        combined_cost = -gate_reward + length_penalty + len(path)
+        return combined_cost
+
+    def search(self, start, target):
+        open_list = []
+        heapq.heappush(open_list, (0, start, [start]))
+
+        while open_list:
+            _, current, path = heapq.heappop(open_list)
+
+            if current == target:
+                self.path = path
+
+                return self.follow_path()
+
+            if len(path) >= self.target_time * 1.3:
+                continue
+
+            for neighbor in get_neighbors(current):
+                if neighbor not in path:
+                    new_path = path + [neighbor]
+                    priority = self.weighted_sum(new_path)
+
+                    heapq.heappush(open_list, (priority, neighbor, new_path))
+        return None
 
 
 WALL = math.inf
@@ -146,24 +122,6 @@ def is_valid_move(x, y):
     return 0 <= x < 9 and 0 <= y < 9 and graph[y][x] != WALL
 
 
-def print_colored_grid(grid):
-    for row in grid:
-        for value in row:
-            if value == 0:
-                print(Fore.WHITE + Back.WHITE + '██', end='')
-            elif value == math.inf:
-                print(Fore.RED + Back.RED + '██', end='')
-            elif value == 'G':
-                print(Fore.GREEN + Back.GREEN + '██', end='')
-            elif value == 'S':
-                print(Fore.BLUE + Back.BLUE + 'S█', end='')
-            elif value == 'T':
-                print(Fore.BLUE + Back.BLUE + 'T█', end='')
-            elif value == 'X':
-                print(Fore.BLACK + Back.BLACK + 'X█', end='')
-        print(Back.RESET)
-
-
 def get_neighbors(node):
     x, y = node
     neighbors = [
@@ -179,105 +137,25 @@ def manhattan_distance(point1, point2):
     return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
 
 
-def weighted_sum(path):
-    gate_proximity = 0
-    gate_reward = 0
-    desired_length = TARGET_TIME
-
-    last_node = path[-1]
-    visited_gates = [gate for gate in GATES if gate in path]
-    unvisited_gates = [gate for gate in GATES if gate not in visited_gates]
-    if unvisited_gates:
-        nearest_gate = min(
-            unvisited_gates, key=lambda gate: manhattan_distance(last_node, gate)
-        )
-        gate_proximity -= 4 * (manhattan_distance(last_node, nearest_gate) - manhattan_distance(path[-2], nearest_gate))
-
-        if manhattan_distance(path[-2], nearest_gate) == 1 and last_node != nearest_gate:
-            gate_proximity += 30
-    
-    if last_node in GATES:
-        gate_reward -= 15
-
-    length_penalty = desired_length - len(path) - manhattan_distance(path[-1], TARGET_POINT)
-    length_penalty *= 3 if length_penalty >=0 else -6
-    length_penalty //= 2
-
-    revisit_penalty = (len(path) - len(set(path))) * 3
-
-    if revisit_penalty == 0:
-        revisit_penalty = -4
-
-    combined_cost = -gate_proximity - gate_reward + length_penalty + revisit_penalty + len(path)
-    return combined_cost
-
-
-def search(start, target, max_steps):
-    open_list = []
-    heapq.heappush(open_list, (0, start, [start]))
-    visited = set()  # Track visited nodes
-
-    while open_list:
-        _, current, path = heapq.heappop(open_list)
-
-        if current == target:
-            return path
-
-        if len(path) >= max_steps * 2:
-            continue
-
-        for neighbor in get_neighbors(current):
-            if neighbor not in path or (path and neighbor == path[-2]):  # Check if path is not empty
-                new_path = path + [neighbor]
-                priority = weighted_sum(new_path)
-
-                heapq.heappush(open_list, (priority, neighbor, new_path))
-                visited.add(neighbor)  # Mark neighbor as visited
-
-        # Remove visited nodes from the set when backtracking
-        while path and path[-1] in visited:  # Check if path is not empty
-            visited.remove(path.pop())
-
-    return None
-
-
 if __name__ == "__main__":
-    init(autoreset=True)
-
     graph = [[0 for _ in range(9)] for _ in range(9)]
 
     # INITIALIZATION
-    set_start_point(8, 3)
-    set_target_point(1, 3)
+    set_start_point(8, 6)
+    set_target_point(1, 4)
 
-    set_gates([(5, 1), (1, 5), (5, 7)])
+    set_gates([(6, 3), (3, 7)])
 
-    create_wall((4, 0), "right")
-    create_wall((2, 2), "right")
-    create_wall((6, 2), "right")
-    create_wall((4, 4), "right")
-    create_wall((6, 6), "right")
-    create_wall((0, 4), "down")
-    create_wall((0, 6), "down")
-    create_wall((4, 4), "down")
+    create_wall((6, 0), "right")
+    create_wall((6, 2), "up")
+    create_wall((4, 2), "right")
+    create_wall((8, 4), "up")
+    create_wall((6, 4), "right")
+    create_wall((2, 4), "right")
+    create_wall((2, 6), "right")
+    create_wall((0, 2), "down")
 
-    TARGET_TIME = int(input("Enter target length: "))
-    if input("Print empty graph? (y/n): ") == "y":
-        print_colored_grid(graph)
+    TARGET_TIME = 60
 
-    path = search(START_POINT, TARGET_POINT, TARGET_TIME)
-
-    if path:
-        print("Found path:")
-        for node in path:
-            graph[node[1]][node[0]] = "X"
-    else:
-        print("No path found.")
-
-    print_colored_grid(graph)
-    print("Length of path:", len(path))
-    print(path)
-
-    # bot = Robot("outA", "outB", 43, 100, 161, 141, TARGET_TIME)
-
-    # search(graph)
+    bot = Robot("outA", "outB", 43, TARGET_TIME - 5)
+    bot.search(START_POINT, TARGET_POINT)
