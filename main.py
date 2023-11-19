@@ -9,7 +9,7 @@ class Robot:
         self.tank_drive = motor.MoveTank(left_motor_port, right_motor_port)
         self.wheel_diameter = wheel_diameter
         self.direction = "up"
-        self.target_time = int(target_time / (250 / (math.pi * wheel_diameter * (8 / 3))))
+        self.target_time = int((target_time * math.pi * wheel_diameter) * (4 / 3) / 250)
         self.path = None
 
     def distance_to_rotations(self, distance):
@@ -19,17 +19,17 @@ class Robot:
         turn = 1 if direction == "right" else -1
 
         self.tank_drive.reset()
-        self.tank_drive.on_for_rotations(100 * turn, 0, 1.5, brake=True, block=True)
+        self.tank_drive.on_for_rotations(50 * turn, 0, 1.5, brake=True, block=True)
         self.tank_drive.reset()
-        self.tank_drive.on_for_rotations(0, -100 * turn, 1.5, brake=True, block=True)
+        self.tank_drive.on_for_rotations(0, -50 * turn, 1.5, brake=True, block=True)
 
     def move(self):
         square = self.distance_to_rotations(250)
-        self.tank_drive.on_for_rotations(100, 100, square, brake=True, block=True)
+        self.tank_drive.on_for_rotations(50, 50, square, brake=True, block=True)
 
     def follow_path(self):
         move = self.distance_to_rotations(125)
-        self.tank_drive.on_for_rotations(100, 100, move, brake=True, block=True)
+        self.tank_drive.on_for_rotations(50, 50, move, brake=True, block=True)
 
         for i in range(len(self.path) - 1):
             current_node = self.path[i]
@@ -49,9 +49,8 @@ class Robot:
             elif abs(direction_difference) == 1:
                 self.rotate("right" if direction_difference < 0 else "left")
             elif abs(direction_difference) == 3:
-                self.rotate("right" if direction > 0 else "left")
+                self.rotate("right" if direction_difference > 0 else "left")
             self.move()
-
 
     def weighted_sum(self, path):
         desired_length = self.target_time
@@ -64,7 +63,7 @@ class Robot:
 
         combined_cost = -gate_reward + length_penalty + len(path)
         return combined_cost
-
+    
     def search(self, start, target):
         open_list = []
         heapq.heappush(open_list, (0, start, [start]))
