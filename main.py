@@ -18,7 +18,6 @@ class Robot:
     def rotate(self, direction):
         turn = 1 if direction == "right" else -1
 
-        self.direction = 
         self.tank_drive.reset()
         self.tank_drive.on_for_rotations(100 * turn, 0, 1.5, brake=True, block=True)
         self.tank_drive.reset()
@@ -40,12 +39,18 @@ class Robot:
             for side in DIRECTIONS.keys():
                 if current_node[0] + DIRECTIONS[side][0] == next_node[0] and current_node[1] + DIRECTIONS[side][1] == next_node[1]:
                     absolute_direction_to_turn = side
+                    self.direction = absolute_direction_to_turn
             
             directions = ["up", "right", "down", "left"]
-            if self.direction == absolute_direction_to_turn:
-                self.move()
-            else:
-                if abs(self.d)
+            direction_difference = directions.index(self.direction) - directions.index(self.absolute_direction_to_turn)
+            if abs(direction_difference) == 2:
+                self.rotate("right")
+                self.rotate("right")
+            elif abs(direction_difference) == 1:
+                self.rotate("right" if direction_difference < 0 else "left")
+            elif abs(direction_difference) == 3:
+                self.rotate("right" if direction > 0 else "left")
+            self.move()
 
 
     def weighted_sum(self, path):
