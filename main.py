@@ -58,9 +58,11 @@ if __name__ == "__main__":
 
     instructions = [
         "ccw",
+        "move",
         "cw",
-        "move"
+        "move",
+        "180"
     ]
 
-    bot = Robot("outA", "outB", 43, TARGET_TIME - 5)
+    bot = Robot("outA", "outB", 43, 120, TARGET_TIME - 5, instructions)
     
