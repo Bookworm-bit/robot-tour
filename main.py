@@ -25,15 +25,15 @@ class Robot:
 
     def rotate_ccw(self):
         self.tank_drive.reset()
-        self.tank_drive.on_for_rotations(-self.speed, self.speed, self.distance_to_rotations(self.width*(pi/4 + pi/12.25)), brake=True, block=True)
+        self.tank_drive.on_for_rotations(-self.speed, self.speed, self.distance_to_rotations(self.width*(pi/4 + pi/12.2)), brake=True, block=True)
 
     def rotate_cw(self):
         self.tank_drive.reset()
-        self.tank_drive.on_for_rotations(self.speed, -self.speed, self.distance_to_rotations(self.width*(pi/4 + pi/12.25)), brake=True, block=True)
+        self.tank_drive.on_for_rotations(self.speed, -self.speed, self.distance_to_rotations(self.width*(pi/4 + pi/12.2)), brake=True, block=True)
 
     def rotate_180(self):
         self.tank_drive.reset()
-        self.tank_drive.on_for_rotations(self.speed, -self.speed, self.distance_to_rotations(self.width*(pi/2 + pi/6.5)), brake=True, block=True)
+        self.tank_drive.on_for_rotations(self.speed, -self.speed, self.distance_to_rotations(self.width*(pi/2 + pi/6.4)), brake=True, block=True)
 
     def move(self):
         self.tank_drive.reset()
